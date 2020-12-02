@@ -43,7 +43,7 @@ var friends = [
     }
 ];
 
-const intersectionByValues = (obj) => {
+const intersectionByValues = obj => {
     Object.keys(obj).forEach(key => obj[key] = obj[key].reduce(intersection));
     return obj
 }
@@ -55,8 +55,6 @@ const intersection = (left, right) => {
 const groupBy = (collection) => {
     const filter = {}
     collection.forEach(([key, values]) => {
-        if (key === undefined)
-            return
         if (filter[key] === undefined)
             filter[key] = [values];
         else
@@ -74,41 +72,38 @@ function query(collection) {
     if (arguments.length === 1)
         return collection
 
-    const needUseMethod = element => element.length > 0;
+    let arr = collection.slice(); // copy
     const operations = Array.from(arguments).slice(1);
 
-    const filters = operations
-        .filter(([method, ..._]) => method === 'filter')
-        .map(([_, values]) => values);
+    const filterMethods = operations.filter(([method, ..._]) => method === 'filter');
 
-    if (filters.some(needUseMethod)) {
+    if (filterMethods.length > 0) {
+        const filters = filterMethods.map(([_, values]) => values);
         const grouped = groupBy(filters);
         const filterObject = intersectionByValues(grouped);
-        collection = collection.filter(row => {
+        arr = arr.filter(row => {
             return Object.keys(filterObject).map(key => {
                 if (row.hasOwnProperty(key))
-                    return filterObject[key].indexOf(row[key]) > 0
+                    return filterObject[key].indexOf(row[key]) >= 0
                 else
                     return false
             }).every(element => element);
         });
     }
 
-    const selects = operations
-        .filter(([method, ..._]) => method === 'select')
-        .map(([_, ...keys]) => keys[0]);
-
-    if (selects.length > 0) {
+    const selectMethods = operations.filter(([method, ..._]) => method === 'select');
+    if (selectMethods.length > 0) {
+        const selects = selectMethods.map(([_, keys]) => keys);
         const keysToSelect = selects.reduce(intersection);
-        collection.forEach(row => {
+        arr.forEach(row => {
             Object.keys(row).forEach(key => {
-                if (keysToSelect.indexOf(key) >= 0) {
+                if (keysToSelect.indexOf(key) === -1) {
                     delete row[key];
                 }
             });
         });
     }
-    return collection;
+    return arr;
 
 }
 
